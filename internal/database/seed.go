@@ -1,31 +1,67 @@
 package database
 
 import (
-	"context"
-	"log"
+	"time"
+
+	"go-backend-template/internal/models"
+	"go-backend-template/pkg/logger"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-func SeedUsers() {
-	users := []struct {
-		Name     string
-		Email    string
-		Password string
-	}{
-		{"Rabgay", "rabgay@example.com", "password123"},
-		{"ByteEater", "byte@example.com", "secret456"},
+// SeedUsers creates initial user records for development
+func SeedUsers(db *gorm.DB) error {
+	logger.Info("Seeding users...")
+
+	// Hash passwords for seed users
+	password1, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Error(err, "Failed to hash password for seed user")
+		return err
 	}
 
-	for _, user := range users {
-		_, err := DB.Exec(context.Background(), `
-			INSERT INTO users (name, email, password)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (email) DO NOTHING
-		`, user.Name, user.Email, user.Password)
+	password2, err := bcrypt.GenerateFromPassword([]byte("secret456"), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Error(err, "Failed to hash password for seed user")
+		return err
+	}
 
-		if err != nil {
-			log.Printf("Error inserting user %s: %v", user.Email, err)
-		} else {
-			log.Printf("Seeded user: %s", user.Email)
+	users := []models.User{
+		{
+			Username:      "admin",
+			Email:         "admin@example.com",
+			Password:      string(password1),
+			EmailVerified: true,
+			Role:          "admin",
+			Active:        true,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		},
+		{
+			Username:      "user",
+			Email:         "user@example.com",
+			Password:      string(password2),
+			EmailVerified: true,
+			Role:          "user",
+			Active:        true,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		},
+	}
+
+	// Create users if they don't exist
+	for _, user := range users {
+		result := db.Where("email = ?", user.Email).FirstOrCreate(&user)
+		if result.Error != nil {
+			logger.Error(result.Error, "Failed to seed user", logger.Fields{"email": user.Email})
+			return result.Error
+		}
+		if result.RowsAffected > 0 {
+			logger.Info("Seeded user", logger.Fields{"email": user.Email})
 		}
 	}
+
+	logger.Info("User seeding completed successfully")
+	return nil
 }

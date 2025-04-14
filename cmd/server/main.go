@@ -33,6 +33,18 @@ func main() {
 	}
 	defer sqlDB.Close()
 
+	// Run migrations
+	if err := database.Migrate(db); err != nil {
+		logger.Fatal(err, "Failed to run database migrations")
+	}
+
+	// Seed data in development environment
+	if cfg.AppEnv == "development" {
+		if err := database.SeedUsers(db); err != nil {
+			logger.Fatal(err, "Failed to seed database")
+		}
+	}
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 

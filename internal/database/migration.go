@@ -1,26 +1,26 @@
 package database
 
 import (
-	"context"
-	"log"
+	"go-backend-template/internal/models"
+	"go-backend-template/pkg/logger"
+
+	"gorm.io/gorm"
 )
 
-func Migrate() {
-	query := `
-		CREATE TABLE IF NOT EXISTS users (
-			id SERIAL PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
-			email VARCHAR(100) UNIQUE NOT NULL,
-			password TEXT NOT NULL,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
-	`
+// Migrate runs database migrations using GORM
+func Migrate(db *gorm.DB) error {
+	logger.Info("Running database migrations...")
 
-	_, err := DB.Exec(context.Background(), query)
+	// AutoMigrate will create tables, foreign keys, constraints, etc.
+	err := db.AutoMigrate(
+		&models.User{},
+		&models.Payment{},
+	)
 	if err != nil {
-		log.Fatalf("Failed to run migration: %v", err)
+		logger.Error(err, "Failed to run migrations")
+		return err
 	}
 
-	log.Println("Database migration completed ✅")
+	logger.Info("Database migrations completed successfully")
+	return nil
 }
